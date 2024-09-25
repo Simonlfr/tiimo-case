@@ -10,11 +10,16 @@ import {
   SwitchRouterButton,
   XStack,
   YStack,
+  H2,
 } from '@my/ui'
 import { ChevronDown, ChevronUp, X } from '@tamagui/lucide-icons'
-import { useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import { useLink } from 'solito/navigation'
+import { Tooltip } from 'tamagui'
+import { OnboardingDialog } from '../components/onboardingDialog/OnboardingDialog'
+
+export type OnboardingStepType = 'intro' | 'tooltip' | 'notefication'
 
 export function HomeScreen({ pagesMode = false }: { pagesMode?: boolean }) {
   const linkTarget = pagesMode ? '/pages-example-user' : '/user'
@@ -22,6 +27,9 @@ export function HomeScreen({ pagesMode = false }: { pagesMode?: boolean }) {
     href: `${linkTarget}/nate`,
   })
 
+  const [currentOnboardingStep, setCurrentOnboardingStep] = useState<OnboardingStepType>('intro')
+
+  const toast = useToastController()
   return (
     <YStack f={1} jc="center" ai="center" gap="$8" p="$4" bg="$background">
       <XStack
@@ -43,7 +51,7 @@ export function HomeScreen({ pagesMode = false }: { pagesMode?: boolean }) {
 
       <YStack gap="$4">
         <H1 ta="center" col="$color12">
-          Welcome to Tamagui.
+          Welcome to Tamagui
         </H1>
         <Paragraph col="$color10" ta="center">
           Here's a basic starter to show navigating from one screen to another.
@@ -56,31 +64,56 @@ export function HomeScreen({ pagesMode = false }: { pagesMode?: boolean }) {
       </YStack>
 
       <Button {...linkProps}>Link to user</Button>
-
-      <SheetDemo />
+      <OnboardingDialog
+        currentOnboardingStep={currentOnboardingStep}
+        onNextStep={() => setCurrentOnboardingStep('tooltip')}
+      />
+      <SheetDemo
+        currentOnboardingStep={currentOnboardingStep}
+        onNextStep={() => {
+          setCurrentOnboardingStep('notefication')
+          toast.show('Sheet closed!', {
+            message: 'Notefication Step 3/3',
+          })
+        }}
+      />
     </YStack>
   )
 }
 
-function SheetDemo() {
-  const toast = useToastController()
-
+function SheetDemo(props: { currentOnboardingStep: OnboardingStepType; onNextStep: () => void }) {
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState(0)
 
+  const isTooltipOpen = props.currentOnboardingStep === 'tooltip' && !open
   return (
-    <>
-      <Button
-        size="$6"
-        icon={open ? ChevronDown : ChevronUp}
-        circular
-        onPress={() => setOpen((x) => !x)}
-      />
+    <div>
+      <Tooltip open={isTooltipOpen}>
+        <Tooltip.Trigger asChild>
+          <Button
+            size="$6"
+            icon={isTooltipOpen ? ChevronDown : ChevronUp}
+            circular
+            onPress={() => setOpen(true)}
+          />
+        </Tooltip.Trigger>
+        <Tooltip.Content>
+          <Tooltip.Arrow />
+          <H2>Toggle stuff!</H2>
+          <Paragraph>
+            This is a simple example of a sheet that can be opened and closed with a button.
+          </Paragraph>
+          <Paragraph>Step 2/3</Paragraph>
+        </Tooltip.Content>
+      </Tooltip>
       <Sheet
         modal
         animation="medium"
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={() => {
+          setOpen(false)
+          props.onNextStep()
+        }}
         snapPoints={[80]}
         position={position}
         onPositionChange={setPosition}
@@ -110,13 +143,11 @@ function SheetDemo() {
             icon={ChevronDown}
             onPress={() => {
               setOpen(false)
-              toast.show('Sheet closed!', {
-                message: 'Just showing how toast works...',
-              })
+              props.onNextStep()
             }}
           />
         </Sheet.Frame>
       </Sheet>
-    </>
+    </div>
   )
 }
